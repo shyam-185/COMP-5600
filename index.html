@@ -1,0 +1,462 @@
+<head>
+  <title>From Language to Logic</title>
+  <script src="plugins/main.js"></script>
+  <script src="grader-all.js"></script>
+</head>
+
+<body
+  onload="onLoad('logic', '<a href=mailto:mmliao@stanford.edu>Madeline Liao<a>', '11/15/2021', 'https://edstem.org/us/courses/13379/discussion/856524')"
+>
+  <div id="assignmentHeader"></div>
+
+  <p>
+    In this assignment, you will get some hands-on experience with logic. You'll
+    see how logic can be used to represent the meaning of natural language
+    sentences, and how it can be used to solve puzzles and prove theorems. Most
+    of this assignment will be translating English into logical formulas, but in
+    Problem 4, we will delve into the mechanics of logical inference. Finally, for the ethics question you will revisit the ethical frameworks and concepts you learned about this quarter through once again writing negative impact statements. 
+  </p>
+
+  <p>
+    <b>NOTE:</b> There is a final <b>mandatory</b> written question after the extra credit problem 5. Do not forget to answer this question! Also for this assignment only, there are no hidden test cases for the programming questions --
+    if you pass all the visible test cases, then you will get full credit!
+  </p>
+
+  <p>
+    We've created a LaTeX template
+    <a href="https://stanford-cs221.github.io/autumn2021/with-prompt-templates/logic-template.zip">here</a>
+    for you to use that contains the prompts for each question.
+  </p>
+
+  <p>
+    To get started, launch a Python shell and try typing the following commands
+    to add logical expressions into the knowledge base.
+  </p>
+
+  <pre>
+from logic import *
+Rain = Atom('Rain')           # Shortcut
+Wet = Atom('Wet')             # Shortcut
+kb = createResolutionKB()     # Create the knowledge base
+kb.ask(Wet)                   # Prints "I don't know."
+kb.ask(Not(Wet))              # Prints "I don't know."
+kb.tell(Implies(Rain, Wet))   # Prints "I learned something."
+kb.ask(Wet)                   # Prints "I don't know."
+kb.tell(Rain)                 # Prints "I learned something."
+kb.tell(Wet)                  # Prints "I already knew that."
+kb.ask(Wet)                   # Prints "Yes."
+kb.ask(Not(Wet))              # Prints "No."
+kb.tell(Not(Wet))             # Prints "I don't buy that."
+</pre
+  >
+
+  To print out the contents of the knowledge base, you can call
+  <code>kb.dump()</code>. For the example above, you get:
+  <pre>
+==== Knowledge base [3 derivations] ===
+* Or(Not(Rain),Wet)
+* Rain
+- Wet
+</pre
+  >
+  In the output, '*' means the fact was explicitly added by the user, and '-'
+  means that it was inferred. Here is a table that describes how logical
+  formulas are represented in code. Use it as a reference guide:
+
+  <table>
+    <tr>
+      <td><b>Name</b></td>
+      <td><b>Mathematical notation</b></td>
+      <td><b>Code</b></td>
+    </tr>
+    <tr>
+      <td>Constant symbol</td>
+      <td>$\text{stanford}$</td>
+      <td><code>Constant('stanford')</code> (must be lowercase)</td>
+    </tr>
+    <tr>
+      <td>Variable symbol</td>
+      <td>$x$</td>
+      <td><code>Variable('$x')</code> (must be lowercase)</td>
+    </tr>
+    <tr>
+      <td>Atomic formula (atom)</td>
+      <td>$\text{Rain}$<br /><br />$\text{LocatedIn}(\text{stanford}, x)$</td>
+      <td>
+        <code>Atom('Rain')</code> (predicate must start with uppercase)<br /><br /><code
+          >Atom('LocatedIn', 'stanford', '$x')</code
+        >
+        (arguments are symbols)
+      </td>
+    </tr>
+    <tr>
+      <td>Negation</td>
+      <td>$\neg \text{Rain}$</td>
+      <td><code>Not(Atom('Rain'))</code></td>
+    </tr>
+    <tr>
+      <td>Conjunction</td>
+      <td>$\text{Rain} \wedge \text{Snow}$</td>
+      <td><code>And(Atom('Rain'), Atom('Snow'))</code></td>
+    </tr>
+    <tr>
+      <td>Disjunction</td>
+      <td>$\text{Rain} \vee \text{Snow}$</td>
+      <td><code>Or(Atom('Rain'), Atom('Snow'))</code></td>
+    </tr>
+    <tr>
+      <td>Implication</td>
+      <td>$\text{Rain} \to \text{Wet}$</td>
+      <td><code>Implies(Atom('Rain'), Atom('Wet'))</code></td>
+    </tr>
+    <tr>
+      <td>Equivalence</td>
+      <td>
+        $\text{Rain} \leftrightarrow \text{Wet}$ (syntactic sugar for
+        $\text{Rain} \to \text{Wet} \wedge \text{Wet} \to \text{Rain}$)
+      </td>
+      <td><code>Equiv(Atom('Rain'), Atom('Wet'))</code></td>
+    </tr>
+    <tr>
+      <td>Existential quantification</td>
+      <td>$\exists x . \text{LocatedIn}(\text{stanford}, x)$</td>
+      <td><code>Exists('$x', Atom('LocatedIn', 'stanford', '$x'))</code></td>
+    </tr>
+    <tr>
+      <td>Universal quantification</td>
+      <td>$\forall x . \text{MadeOfAtoms}(x)$</td>
+      <td><code>Forall('$x', Atom('MadeOfAtoms', '$x'))</code></td>
+    </tr>
+  </table>
+
+  <p>
+    The operations <code>And</code> and <code>Or</code> only take two arguments.
+    If we want to take a conjunction or disjunction of more than two, use
+    <code>AndList</code> and <code>OrList</code>. For example:
+    <code>AndList([Atom('A'), Atom('B'), Atom('C')])</code> is equivalent to
+    <code>And(And(Atom('A'), Atom('B')), Atom('C'))</code>.
+  </p>
+
+  <!------------------------------------------------------------>
+  <h2 class="problemTitle">Problem 1: Propositional logic</h2>
+
+  <p>
+    Write a propositional logic formula for each of the following English
+    sentences in the given function in <code>submission.py</code>. For example,
+    if the sentence is <i>"If it is raining, it is wet,"</i> then you would
+    write <code>Implies(Atom('Rain'), Atom('Wet'))</code>, which would be
+    $\text{Rain} \to \text{Wet}$ in symbols (see <code>examples.py</code>).
+    Note: Don't forget to return the constructed formula!
+  </p>
+
+  <ol class="problem">
+    <li class="code" id="1a">
+      <i>"If it's summer and we're in California, then it doesn't rain."</i>
+    </li>
+    <li class="code" id="1b">
+      <i>"It's wet if and only if it is raining or the sprinklers are on."</i>
+    </li>
+    <li class="code" id="1c">
+      <i>"Either it's day or night (but not both)."</i>
+    </li>
+  </ol>
+
+  You can run the following command to test each formula:
+  <pre>
+    python grader.py 1a
+    </pre
+  >
+  If your formula is wrong, then the grader will provide a counterexample, which
+  is a model that your formula and the correct formula don't agree on. For
+  example, if you accidentally wrote
+  <code>And(Atom('Rain'), Atom('Wet'))</code> for
+  <i>"If it is raining, it is wet,"</i>, then the grader would output the
+  following:
+  <pre>
+    Your formula (And(Rain,Wet)) says the following model is FALSE, but it should be TRUE:
+    * Rain = False
+    * Wet = True
+    * (other atoms if any) = False
+    </pre
+  >
+  <p>
+    In this model, it's not raining and it is wet, which satisfies the correct
+    formula $\text{Rain} \to \text{Wet}$ (TRUE), but does not satisfy the
+    incorrect formula $\text{Rain} \wedge \text{Wet}$ (FALSE). Use these
+    counterexamples to guide you in the rest of the assignment.
+  </p>
+
+  <!------------------------------------------------------------>
+  <h2 class="problemTitle">Problem 2: First-order logic</h2>
+
+  <p>
+    Write a first-order logic formula for each of the following English
+    sentences in the given function in <code>submission.py</code>. For example,
+    if the sentence is <i>"There is a light that shines,"</i> then you would
+    write
+    <code>Exists('$x', And(Atom('Light', '$x'), Atom('Shines', '$x')))</code>,
+    which would be $\exists x . \text{Light}(x) \wedge \text{Shines}(x)$ in
+    symbols (see <code>examples.py</code>).
+  </p>
+
+  <p>
+    <i>Tips</i>:
+    <ul>
+            <li> You can directly write <code>'$x'</code> instead of <code>Variable('$x')</code> to represent a variable symbol.
+            <li> Python tuples can span multiple lines, which help with
+            readability when you are writing logic expressions (some of them in this
+            homework can get quite large).
+    </ul>
+  </p>
+
+  <p></p>
+
+  <ol class="problem">
+    <li class="code" id="2a">
+      <i>"Every person has a mother."</i>
+    </li>
+    <p>
+      <b>Note: </b> You do NOT have to enforce that the mother is a "person".
+    </p>
+    <li class="code" id="2b">
+      <i>"At least one person has no children."</i>
+    </li>
+    <p>
+      <b>Note: </b> You do NOT have to enforce that the child is a "person".
+    </p>
+    <li class="code" id="2c">
+      Create a formula which defines <code>Father(x,y)</code> in terms of
+      <code>Male(x)</code> and <code>Parent(x,y)</code>.
+    </li>
+
+    <li class="code" id="2d">
+      Create a formula which defines <code>Granddaughter(x,y)</code> in terms of
+      <code>Female(x)</code> and <code>Child(x,y)</code>.
+    </li>
+    <p><b>Note: </b> It is ok for a person to be their own child.</p>
+  </ol>
+
+  <!------------------------------------------------------------>
+  <h2 class="problemTitle">Problem 3: Liar puzzle</h2>
+
+  Someone crashed the server, and accusations are flying. For this problem, we
+  will encode the evidence in first-order logic formulas to find out who crashed
+  the server. You've narrowed it down to four suspects: John, Susan, Mark, and
+  Nicole. You have the following information:
+  <ol>
+    <li>Mark says: "It wasn't me!"</li>
+    <li>John says: "It was Nicole!"</li>
+    <li>Nicole says: "No, it was Susan!"</li>
+    <li>Susan says: "Nicole's a liar."</li>
+    <li>You know that exactly one person is telling the truth.</li>
+    <li>You also know exactly one person crashed the server.</li>
+  </ol>
+  <ol class="problem">
+    <li class="code" id="3a">
+      Fill out <code>liar()</code> to return a list of 6 formulas, one for each
+      of the above facts.
+      <br />
+      The grader is set up such that you could run individual parts
+      <code>3a-0</code> to <code>3a-5</code> to debug each formula only if you
+      implement them <b>in the order specified</b>.
+    </li>
+  </ol>
+
+  You can test your code using the following commands:
+
+  <pre>
+    python grader.py 3a-0
+    python grader.py 3a-1
+    python grader.py 3a-2
+    python grader.py 3a-3
+    python grader.py 3a-4
+    python grader.py 3a-5
+    python grader.py 3a-all  # Tests the conjunction of all the formulas
+    </pre
+  >
+
+  To solve the puzzle and find the answer, <code>tell</code> the formulas to the
+  knowledge base and <code>ask</code> the query
+  <code>CrashedServer('$x')</code>, by running:
+  <pre>
+    python grader.py 3a-run
+    </pre
+  >
+
+  <!------------------------------------------------------------>
+  <h2 class="problemTitle">Problem 4: Odd and even integers</h2>
+
+  <p>
+    In this problem, we will see how to use logic to automatically prove
+    mathematical theorems. We will focus on encoding the theorem and leave the
+    proving part to the logical inference algorithm. Here is the theorem:
+  </p>
+  If the following constraints hold:
+  <ol>
+    <li>
+      Each number $x$ has exactly one successor, which is not equal to $x$.
+    </li>
+    <li>Each number is either odd or even, but not both.</li>
+    <li>The successor of an even number is odd.</li>
+    <li>The successor of an odd number is even.</li>
+    <li>For every number $x$, the successor of $x$ is larger than $x$.</li>
+    <li>
+      Larger is a transitive property: if $x$ is larger than $y$ and $y$ is
+      larger than $z$, then $x$ is larger than $z$.
+    </li>
+  </ol>
+  Then we have the following consequence:
+  <ul>
+    <li>For each number, there is an even number larger than it.</li>
+  </ul>
+
+  <p>
+    Note: in this problem, "larger than" is just an arbitrary relation, and you
+    should not assume it has any prior meaning. In other words, don't assume
+    things like "a number can't be larger than itself" unless explicitly stated.
+  </p>
+
+  <ol class="problem">
+    <li class="code" id="4a">
+      Fill out <code>ints()</code> to construct 6 formulas for each of the
+      constraints. The consequence has been filled out for you (<code
+        >query</code
+      >
+      in the code).
+      <br />
+      The grader is set up such that you could run individual parts
+      <code>4a-0</code> to <code>4a-5</code> to debug each formula only if you
+      implement them <b>in the order specified</b>. You can test your code using
+      the following commands:
+      <pre>
+    python grader.py 4a-0
+    python grader.py 4a-1
+    python grader.py 4a-2
+    python grader.py 4a-3
+    python grader.py 4a-4
+    python grader.py 4a-5
+    python grader.py 4a-all  # Tests the conjunction of all the formulas
+    </pre
+      >
+
+      To finally prove the theorem, <code>tell</code> the formulas to the
+      knowledge base and <code>ask</code> the query by running model checking
+      (on a finite model):
+      <pre>
+    python grader.py 4a-run
+    </pre
+      >
+    </li>
+  </ol>
+
+  <!------------------------------------------------------------>
+  <h2 class="problemTitle">Problem 5: Semantic parsing (extra credit)</h2>
+
+  <p>
+    Semantic parsing is the task of converting natural lanugage utterances into
+    first-order logic formulas. We have created a small set of grammar rules in
+    the code for you in
+    <code>createBaseEnglishGrammar()</code>. In this problem, you will add
+    additional grammar rules to handle a wider variety of sentences.
+    Specifically, create a <code>GrammarRule</code> for each of the following
+    sentence structures.
+  </p>
+
+  <ol class="problem">
+    <li class="code" id="5a">
+      Example: <i>Every person likes some cat.</i> General template:
+      <pre>$Clause &larr; every $Noun $Verb some $Noun</pre>
+    </li>
+    <li class="code" id="5b">
+      Example: <i>There is some cat that every person likes.</i> General
+      template:
+      <pre>$Clause &larr; there is some $Noun that every $Noun $Verb</pre>
+    </li>
+    <li class="code" id="5c">
+      Example:
+      <i>If a person likes a cat then the former feeds the latter.</i> General
+      template:
+      <pre>
+$Clause &larr; if a $Noun $Verb a $Noun then the former $Verb the latter</pre
+      >
+    </li>
+  </ol>
+
+  After implementing these functions, you should be able to try some simple
+  queries using <code>nli.py</code>! For example:
+  <pre>
+    $ python nli.py
+    
+    &gt Every person likes some cat.
+    
+    &gt&gt&gt&gt&gt I learned something.
+    ------------------------------
+    &gt Every cat is a mammal.
+    
+    &gt&gt&gt&gt&gt I learned something.
+    ------------------------------
+    &gt Every person likes some mammal?
+    
+    &gt&gt&gt&gt&gt Yes.
+    </pre
+  >
+<h2 class="problemTitle">Problem 6: Revisiting Ethical Issue Spotting</h2>
+<p>
+In <a href="https://stanford-cs221.github.io/autumn2021/assignments/foundations/index.html">Homework 1: Foundations</a>, you practiced spotting ethical issues in real-world scenarios.  In this question, you will return to a similar task equipped with the ethical frameworks and concepts you have learned and applied during the quarter.  Just like on homework 1, you will write a negative impacts statement for the scenarios below that justifies your decision using one of the ethical frameworks / concepts you learned about this quarter. Specifically, you will: 
+<ol>
+<li>List one of the sixteen numbered ethical concerns taken from the <a href="https://neurips.cc/public/EthicsGuidelines" >NeurIPS Ethical Guidelines</a> page.</li>
+<li>List an ethical concept or framework from the course, which can be found listed below.</li>
+<li>Finally, justify why the chosen ethical concern from the NeurIPS guidelines applies to this scenario <i>using the ethical concept or framework from the course</i>.</li>
+</ol>
+<b>Ethical Frameworks / Concepts From the Course</b>: 
+<ol>
+<li><u>Theories of Distributive Justice</u> (utilitarianism, prioritarianism, difference principle, avoid compounding injustice) If using this framework in your answer, pick a specific theory of distributive justice.</li>
+<li><u>Communicating Limitations with a Transparency Statement</u></li>
+<li><u>Theories of Responsibility To Future Generations</u> (Veil of Ignorance, Uncertain Future, Precautionary Risks, Symmetry of Future Generations, Vulnerability of Future Generations) If using this framework in your answer, pick a specific theory of responsibility to future generations.</li>
+<li><u>Wicked Problems</u></li>
+<li><u>Ethics Dumping</u></li>
+<li><u>Dual-Use Technologies</u></li>
+</ol>
+
+<b>Example Scenario</b>: Recent resolutions by the United Nations and policy statements by roboticists propose a 5 year moratorium on “development, deployment, transfer, and use of anti-personnel lethal autonomous weapon systems,” or weapons systems that can target and kill people without direct human oversight [4].  Human oversight ensures that a human takes moral and legal responsibility for all actions and for ensuring that actions comply with the laws of war.  Some lethal autonomous drones couple facial recognition, used to autonomously identify their targets, with action-planning used to kill them. 
+<br>
+A research paper proposes a new AI-based action-planning system for automatically detecting and aiding tourists stranded in Death Valley in the summer. The system couples two systems on an unmanned drone: (a) computer vision to do vehicle recognition and detect the stranded cars in the desert and (b) a motorized arm to provide the stranded tourists with water bottles while rescuers are on their way, since humans can easily die of heatstroke and exhaustion when temperatures exceed 50˙C, as often happens in Death Valley. The drone is able to detect disabled vehicles with almost 99.5% accuracy, and so the paper proposes that the drone system can likely be fully automated with no human verification of the stranded car before delivering the water, also speeding up the time of water delivery and potentially saving the stranded tourists before heatstroke sets in. <a href="#fn-1">[1]</a>.
+<br>
+<br>
+<b>Example answer</b>: The proposed technology <u>Directly facilitates injury to living beings</u>, as it can be used as part of a weapons system without significant modification. A drone capable of recognizing cars and delivering water, and more importantly coupling these capacities as part of a multi-stage autonomous planning system, is a <u>dual-use technology</u>, or a technology that can be used for peaceful purposes or as part of a weapon of war. It would be very simple to replace the water delivery system with a weapon of war, and since the drone has a very high accuracy rate, it can likely be operated successfully without human supervision, in violation of the UN resolution.
+
+</p>
+
+<ol class="problem">
+    <li class="writeup" id="6a">
+ <b>Scenario 1</b>: After their study design was not approved by IRB in their home country, a research group tests their new low-cost AI-based screening device for cervical cancer in another country with a lower standard for clinical trials. In the home country, the standard of care for the control versus test group for a new screening technology is to still administer the standard of care test to all patients in the trial, which in this case would be a Pap smear. However, in the host country this research team administered only the low-cost AI-based screen to 140,000 women in the test group and administered <b>no</b> screen to 140,000 women in the control group. No pap smears were administered to any women in the study. Of the 140,000 women who received no screen in the control arm of the study, 254 of them ended up developing cervical cancer and dying as a result. <a href="#fn-2">[2]</a>.
+
+      <div class="expected">
+       A 2-5 sentence paragraph for each of the scenarios where you <b>A.</b> identify one ethical concern from the NeurIPS Ethical Guidelines and <b>B.</b> one ethical concept from the course and justify why you think they apply, and <b>C.</b> link the ethical concept to the NeurIPS ethical concern. Copy out and underline both the ethical checklist item and the ethical concept to which you are referring as part of your answer (i.e.: <u>.Severely damage the environment</u>; <u>wicked problems</u>). 
+      </div>
+    </li>
+    <li class="writeup" id="6b">
+    <b>Scenario 2</b>: A recent economic forestry paper proposed an MDP model for optimizing commercial logging in a National Forest that uses a 30-year time horizon to suggest when trees should be cut for optimal logging yields. It recommends cutting each tree once it is at 30 years or older, suggesting the policy of harvesting every tree in the forest every 30 years and leading to a clear-cut forest by the end of the simulation. <a href="#fn-3">[3]</a>.
+      <div class="expected">
+      A 2-5 sentence paragraph for each of the scenarios where you <b>A.</b> identify one ethical concern from the NeurIPS Ethical Guidelines and <b>B.</b> one ethical concept from the course and justify why you think they apply, and <b>C.</b> link the ethical concept to the NeurIPS ethical concern. Copy out and underline both the ethical checklist item and the ethical concept to which you are referring as part of your answer (i.e.: <u>.Severely damage the environment</u>; <u>wicked problems</u>). 
+      </div>
+    </li>
+</ol>
+
+
+  <div
+    id="feedback"
+    data-survey-url="https://docs.google.com/forms/d/e/1FAIpQLSdg9dCsHtrZlRS5iFXqJpLgwls1MxoXAZURwIBoQmz1eGdvZw/viewform?usp=sf_link"
+  ></div>
+<p id="fn-1"> [1]
+Inspired by <a href="https://www.cc.gatech.edu/ai/robot-lab/online-publications/AWS.pdf">https://www.cc.gatech.edu/ai/robot-lab/online-publications/AWS.pdf</a>.
+</p>
+<p id="fn-2"> [2]
+Modified from <a href="https://link.springer.com/book/10.1007/978-3-319-64731-9">cervical cancer screening in India</a>.
+</p>
+<p id="fn-3"> [3]
+Modified from <a href="https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1465-7295.1976.tb00437.x">optimal forest growth modeling</a>.
+</p>
+
+
+</body>
